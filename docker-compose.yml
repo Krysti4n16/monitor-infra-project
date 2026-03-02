@@ -1,0 +1,54 @@
+services:
+  web-app:
+    image: nginx:alpine
+    container_name: production-web
+    ports:
+      - "8080:80"
+    volumes:
+      - ./html:/usr/share/nginx/html
+    networks:
+      - monitoring-net
+
+  prometheus:
+    image: prom/prometheus:latest
+    container_name: prometheus-db
+    ports:
+      - "9090:9090"
+    volumes:
+      - ./prometheus.yml:/etc/prometheus/prometheus.yml
+      - prometheus_data:/prometheus  
+    networks:
+      - monitoring-net
+
+  grafana:
+    image: grafana/grafana:latest
+    container_name: grafana-dashboard
+    ports:
+      - "3000:3000"
+    environment:
+      - GF_SECURITY_ADMIN_PASSWORD=admin
+    volumes:
+      - grafana_data:/var/lib/grafana  
+    networks:
+      - monitoring-net
+    depends_on:
+      - prometheus
+
+  custom-exporter:
+    build: ./exporter
+    container_name: python-monitor
+    ports:
+      - "8000:8000"
+    environment:
+      - TARGET_URL=http://web-app:80
+      - PYTHONUNBUFFERED=1
+    networks:
+      - monitoring-net
+
+networks:
+  monitoring-net:
+    driver: bridge
+
+volumes:  
+  grafana_data:
+  prometheus_data:
